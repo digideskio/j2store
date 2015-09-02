@@ -14,6 +14,8 @@
 
 //no direct access
 defined('_JEXEC') or die('Restricted access');
+
+$config = JFactory::getConfig();
 ?>
 <style type="text/css">
     #dotpay_form { width: 100%; }
@@ -46,7 +48,7 @@ defined('_JEXEC') or die('Restricted access');
     <input type="hidden" name="postcode" value="<?php echo $vars->postcode; ?>" />
     <input type="hidden" name="phone" value="<?php echo $vars->phone; ?>" />
     <input type="hidden" name="country" value="<?php echo $vars->country; ?>" />
-    <input type="hidden" name="p_info" value="<?php echo $vars->p_info; ?>" />
+    <input type="hidden" name="p_info" value="<?php echo $config->get( 'sitename' ); ?>" />
 
     <button type="submit" class="button btn btn-success"><?php echo JText::_('J2STORE_CHECKOUT_CONTINUE'); ?></button>
 </form>

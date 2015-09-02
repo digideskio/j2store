@@ -19,15 +19,36 @@ defined('_JEXEC') or die('Restricted access');
 require_once JPATH_ADMINISTRATOR . '/components/com_j2store/library/plugins/payment.php';
 require_once JPATH_ADMINISTRATOR . '/components/com_j2store/helpers/j2store.php';
 
+/**
+ * Class plgJ2StorePayment_dotpay
+ */
 class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
 
+    /**
+     * Name of plugin
+     * @var string
+     */
     var $_element   = 'payment_dotpay';
+
+    /**
+     * Log errors
+     * @var bool
+     */
     var $_isLog     = false;
 
+    /**
+     * URLs for development and test environment
+     * @var array
+     */
     protected $_url = array(
         0 => 'https://ssl.dotpay.pl/',
         1 => 'https://ssl.dotpay.pl/test_payment/'
     );
+
+    /**
+     * Default config for plugin
+     * @var array
+     */
     protected $_default = array(
         'api_version' => 'dev',
         'channel'   => '',
@@ -35,11 +56,51 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         'type'      => 0,
     );
 
+    /**
+     * Available currencies
+     * @var array
+     */
+    protected $_currency = array(
+        'PLN', 'EUR', 'USD', 'GBP', 'JPY', 'CZK', 'SEK'
+    );
+
+    /**
+     * Status OK
+     */
     const STATUS_OK = 'OK';
+
+    /**
+     * Status FAIL
+     */
     const STATUS_FAIL = 'FAIL';
+
+    /**
+     * Status operation completed
+     */
     const OPERATION_STATUS_COMPLETED = 'completed';
+
+    /**
+     * Status operation rejected
+     */
     const OPERATION_STATUS_REJECTED = 'rejected';
 
+    /**
+     * @inheritdoc
+     * @param object $subject
+     * @param array $config
+     */
+    public function __construct($subject, $config) {
+        parent::__construct($subject, $config);
+        $this->loadLanguage( 'plg_j2store_payment_dotpay', JPATH_ADMINISTRATOR );
+    }
+
+    /**
+     * @inheritdoc
+     * Prepare for payment
+     *
+     * @param array $data
+     * @return string
+     */
     public function _prePayment( $data ) {
         $vars   = new JObject();
         $info   = $this->getOrderInformation($data);
@@ -48,7 +109,7 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         $vars->id           = $this->params->get('accountId');
         $vars->amount       = $data['orderpayment_amount'];
         $vars->currency     = $data['order']->currency_code;
-        $vars->description  = $data['order_id'];
+        $vars->description  = JText::_('J2STORE_PLUGIN_DOTPAY_ORDER') . $data['order_id'];
         $vars->lang         = $this->getLanguage();
         $vars->api_version  = $this->_default['api_version'];
 
@@ -71,11 +132,21 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
 
         $vars->payment_url  = $this->_url[$this->params->get('sandbox', 0)];
 
-        $html = $this->_getLayout('prepayment', $vars);
+        if (in_array($data['order']->currency_code, $this->_currency)) {
+            $html = $this->_getLayout('prepayment', $vars);
+        } else {
+            $html = $this->_getLayout('wrongcurrency');
+        }
 
         return $html;
     }
 
+    /**
+     * @inheritdoc
+     * Response status
+     * @param array $data
+     * @throws Exception
+     */
     public function _postPayment( $data ) {
         $app =JFactory::getApplication();
 
@@ -94,21 +165,35 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         $app->close();
     }
 
+    /**
+     * Get actual language for page
+     * @return mixed
+     */
     private function getLanguage() {
         $lang   = JFactory::getLanguage();
         $lang   = explode( '-', $lang->getTag() );
         return $lang[0];
     }
 
+    /**
+     * Get order information
+     * @param $data
+     * @return mixed
+     */
     private function getOrderInformation( $data ) {
         $order = $data['order']->getOrderInformation();
         return $order;
     }
 
+    /**
+     * Get price from order
+     * @param $order_id
+     * @return int
+     */
     private function getPrice($order_id) {
         F0FTable::addIncludePath( JPATH_ADMINISTRATOR.'/components/com_j2store/tables' );
         $order = F0FTable::getInstance('Order', 'J2StoreTable');
-        var_dump($order_id);
+
         if($order->load( array('order_id'=>$order_id))) {
             return $order->order_total;
         } else {
@@ -116,6 +201,11 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         }
     }
 
+    /**
+     * Validation for response status
+     * @param $data
+     * @return string
+     */
     private function getValidation($data) {
         $total_price = $this->getPrice($data->getString('control'));
 
@@ -142,7 +232,8 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
             ($data->getString('geoip_country') ? $data->getString('geoip_country') : '');
 
 
-        if($_SERVER['REMOTE_ADDR'] <> '195.150.9.37') {
+        if($_SERVER['REMOTE_ADDR'] <> '195.150.9.37'
+            && !(bool) $this->params->get('sandbox', 0)) {
             return self::STATUS_FAIL;
         }
 
@@ -157,6 +248,11 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         }
     }
 
+    /**
+     * Set status order for response
+     * @param $order_id
+     * @return bool
+     */
     private function setOrderStatus($order_id) {
 
         F0FTable::addIncludePath ( JPATH_ADMINISTRATOR . '/components/com_j2store/tables' );
