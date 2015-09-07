@@ -1,6 +1,10 @@
 PLUGIN Dotpay dla sklepu J2Store
 ===============================
 
+Testowane na:
+ - Joomla 3.4.3
+ - J2Store 3.1.10
+
 UWAGI!!
 ======
 
