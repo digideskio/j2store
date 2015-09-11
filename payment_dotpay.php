@@ -202,6 +202,23 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
     }
 
     /**
+     * Get currency code from order
+     *
+     * @param $order_id
+     * @return string
+     */
+    private function getCurrencyFromOrder($order_id) {
+        F0FTable::addIncludePath( JPATH_ADMINISTRATOR.'/components/com_j2store/tables' );
+        $order = F0FTable::getInstance('Order', 'J2StoreTable');
+
+        if($order->load( array('order_id'=>$order_id))) {
+            return $order->currency_code;
+        } else {
+            return '';
+        }
+    }
+
+    /**
      * Validation for response status
      * @param $data
      * @return string
@@ -237,11 +254,11 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
             return self::STATUS_FAIL;
         }
 
-
         if (hash('sha256', $string) === $data->getString('signature')
             && (float) $data->getString('operation_amount') === (float) $total_price
             && ( $data->getString('operation_status') === self::OPERATION_STATUS_COMPLETED
-                || $data->getString('operation_status') === self::OPERATION_STATUS_REJECTED ) ) {
+                || $data->getString('operation_status') === self::OPERATION_STATUS_REJECTED )
+            && $data->getString('operation_currency') === $this->getCurrencyFromOrder($data->getString('control'))) {
             return self::STATUS_OK;
         } else {
             return self::STATUS_FAIL;
