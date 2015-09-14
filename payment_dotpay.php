@@ -116,7 +116,7 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         //Additional data
         $vars->channel      = (string) $this->_default['channel'];
         $vars->ch_lock      = (string) $this->_default['ch_lock'];
-        $vars->url          = JURI::base(). "index.php?option=com_j2store&view=checkout";
+        $vars->url          = JURI::base(). "index.php?option=com_j2store&task=checkout.confirmPayment&orderpayment_type=payment_dotpay";
         $vars->type         = $this->_default['type'];
         $vars->urlc         = JURI::base() . "index.php?option=com_j2store&task=checkout.confirmPayment&orderpayment_type=payment_dotpay";
         $vars->control      = $data['order_id'];
@@ -148,21 +148,37 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
      * @throws Exception
      */
     public function _postPayment( $data ) {
+
         $app =JFactory::getApplication();
+        $html = "";
 
-        $status = $this->getValidation($app->input);
+        $get = $app->input->get->get('status', false);
 
-        if($status === self::STATUS_OK) {
-            if($this->setOrderStatus($app->input->getString('control'))) {
-                echo self::STATUS_OK;
+        if ( (bool) $get ) {
+            $vars = new JObject();
+
+            if ($app->input->get->getString('status') == self::STATUS_OK) {
+                $vars->message = JText::_('J2STORE_CONFIRMED');
+            } else {
+                $vars->message = JText::_('J2STORE_FAILED');
+            }
+            $html = $this->_getLayout('postpayment', $vars);
+        } else {
+            $status = $this->getValidation($app->input);
+
+            if($status === self::STATUS_OK) {
+                if($this->setOrderStatus($app->input->getString('control'))) {
+                    echo self::STATUS_OK;
+                } else {
+                    echo self::STATUS_FAIL;
+                }
             } else {
                 echo self::STATUS_FAIL;
             }
-        } else {
-            echo self::STATUS_FAIL;
-        }
 
-        $app->close();
+            $app->close();
+        }
+        return $html;
     }
 
     /**
