@@ -116,9 +116,9 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         //Additional data
         $vars->channel      = (string) $this->_default['channel'];
         $vars->ch_lock      = (string) $this->_default['ch_lock'];
-        $vars->url          = JURI::base(). "index.php?option=com_j2store&task=checkout.confirmPayment&orderpayment_type=payment_dotpay";
+        $vars->url          = $this->getBaseUrl(). "index.php?option=com_j2store&task=checkout.confirmPayment&orderpayment_type=payment_dotpay";
         $vars->type         = $this->_default['type'];
-        $vars->urlc         = JURI::base() . "index.php?option=com_j2store&task=checkout.confirmPayment&orderpayment_type=payment_dotpay";
+        $vars->urlc         = $this->getBaseUrl() . "index.php?option=com_j2store&task=checkout.confirmPayment&orderpayment_type=payment_dotpay";
         $vars->control      = $data['order_id'];
         $vars->firstname    = $info->billing_first_name;
         $vars->lastname     = $info->billing_last_name;
@@ -139,6 +139,14 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         }
 
         return $html;
+    }
+
+    private function getBaseUrl()
+    {
+        if($this->params->get('ssl', 0) == 0){
+            return JURI::base();
+        }
+        return  str_replace("http://", "https://", JURI::base());
     }
 
     /**
