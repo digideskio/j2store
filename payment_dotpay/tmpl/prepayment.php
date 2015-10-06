@@ -26,7 +26,6 @@ $config = JFactory::getConfig();
       action="<?php echo $vars->payment_url; ?>"
       method="post"
       name="adminForm"
-      enctype="multipart/form-data"
     >
     <input type="hidden" name="id" value="<?php echo $vars->id; ?>" />
     <input type="hidden" name="amount" value="<?php echo $vars->amount; ?>" />

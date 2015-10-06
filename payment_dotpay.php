@@ -223,7 +223,7 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
     private function setCompleteStatus($orderId)
     {
         $order = $this->getOrder($orderId);
-        $order->payment_complete ();
+        $order->payment_complete();
         $this->save($order);
     }
 
