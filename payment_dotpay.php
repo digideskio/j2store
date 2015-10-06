@@ -84,6 +84,14 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
      */
     const OPERATION_STATUS_REJECTED = 'rejected';
 
+    const VALIDATION_PRICE = 'miss match price';
+
+    const VALIDATION_IP = 'wrong ip';
+
+    const VALIDATION_TOKEN = 'miss match token';
+
+    const VALIDATION_CURRENCY = 'miss match currency';
+
     /**
      * @inheritdoc
      * @param object $subject
@@ -118,7 +126,7 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         $vars->ch_lock      = (string) $this->_default['ch_lock'];
         $vars->url          = $this->getBaseUrl(). "index.php?option=com_j2store&task=checkout.confirmPayment&orderpayment_type=payment_dotpay";
         $vars->type         = $this->_default['type'];
-        $vars->urlc         = $this->getBaseUrl() . "index.php?option=com_j2store&task=checkout.confirmPayment&orderpayment_type=payment_dotpay";
+        $vars->urlc         = $this->getBaseUrl() . "index.php?option=com_j2store&task=checkout.confirmPayment&orderpayment_type=payment_dotpay&notification=true";
         $vars->control      = $data['order_id'];
         $vars->firstname    = $info->billing_first_name;
         $vars->lastname     = $info->billing_last_name;
@@ -141,6 +149,12 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         return $html;
     }
 
+    /**
+     * Get base url depend on option. This method override original base url
+     * with https if it is necessary
+     *
+     * @return mixed|string
+     */
     private function getBaseUrl()
     {
         if($this->params->get('ssl', 0) == 0){
@@ -150,6 +164,10 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
     }
 
     /**
+     * This method is responsible both form processing notification and
+     *  generate 'thank you' message. Depend on notification parameter getting from
+     *  $_GET it trigger processing notification or generateing 'thank you' message
+     *
      * @inheritdoc
      * Response status
      * @param array $data
@@ -157,36 +175,124 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
      */
     public function _postPayment( $data ) {
 
-        $app =JFactory::getApplication();
-        $html = "";
+        $app = JFactory::getApplication();
+        $isNotification = $app->input->get->get('notification');
 
-        $get = $app->input->get->get('status', false);
-
-        if ( (bool) $get ) {
-            $vars = new JObject();
-
-            if ($app->input->get->getString('status') == self::STATUS_OK) {
-                $vars->message = JText::_('J2STORE_CONFIRMED');
-            } else {
-                $vars->message = JText::_('J2STORE_FAILED');
-            }
-            $html = $this->_getLayout('postpayment', $vars);
-        } else {
-            $status = $this->getValidation($app->input);
-
-            if($status === self::STATUS_OK) {
-                if($this->setOrderStatus($app->input->getString('control'))) {
-                    echo self::STATUS_OK;
-                } else {
-                    echo self::STATUS_FAIL;
-                }
-            } else {
-                echo self::STATUS_FAIL;
-            }
-
+        if($isNotification){
+            $this->processNotification($app->input);
             $app->close();
         }
-        return $html;
+
+        $status = $app->input->get->getString('status');
+        $message =$this->createConfirmMessage($status);
+        return  $this->_getLayout('postpayment', $message);
+
+    }
+
+    /**
+     * This method process notification from dotpay. First it trigger few validation
+     * and then based on validation status change status of order
+     *
+     * @param $data
+     */
+    private function processNotification($data)
+    {
+        $status = $this->getValidation($data);
+        $orderId = $data->getString('control');
+        switch($status){
+            case self::OPERATION_STATUS_COMPLETED;
+                $this->setCompleteStatus($orderId);
+                echo self::STATUS_OK;
+                break;
+            case self::OPERATION_STATUS_REJECTED;
+                $this->setWrongStatus($orderId, 6); // 6 status = canceled
+                echo self::STATUS_OK;
+                break;
+            default:
+                $this->setWrongStatus($orderId, 3); // 3 status = wrong
+                echo $status;
+        }
+    }
+
+    /**
+     * Set complete status. This method is internal j2store method which should
+     * set everything what is necessary after complete payment
+     *
+     * @param $orderId
+     */
+    private function setCompleteStatus($orderId)
+    {
+        $order = $this->getOrder($orderId);
+        $order->payment_complete ();
+        $this->save($order);
+    }
+
+
+    /**
+     * This method change order status. Status is defined as $order_state_id
+     * allowed id are:
+     *  1 confirmed
+     *  2 processing
+     *  3 something goes wrong
+     *  4 pending
+     *  5 new
+     *  6 canceled
+     *
+     * @param $orderId
+     * @param $order_state_id
+     */
+    private function setWrongStatus($orderId , $order_state_id)
+    {
+        $order = $this->getOrder($orderId);
+        $order->update_status( $order_state_id, true );
+        $order->reduce_order_stock();
+        $this->save($order);
+    }
+
+    /**
+     * Saveing order model and trigger remove item from card if everything goes ok
+     *
+     * @param $order
+     */
+    private function save($order)
+    {
+        if($order->store()){
+            $order->empty_cart();
+        }
+    }
+
+    /**
+     * Get order object from  model
+     *
+     * @param $orderId
+     * @return static
+     */
+    private function getOrder($orderId)
+    {
+        F0FTable::addIncludePath ( JPATH_ADMINISTRATOR . '/components/com_j2store/tables' );
+        $order = F0FTable::getInstance ( 'Order', 'J2StoreTable' )->getClone();
+        $order->load(array('order_id' => $orderId));
+        return $order;
+    }
+
+    /**
+     * Based on status set error or ok message displaying to customer
+     *
+     * @param $status
+     * @return JObject
+     */
+    private function createConfirmMessage($status)
+    {
+        $vars = new JObject();
+
+        switch ($status){
+            case self::STATUS_OK:
+                $vars->message = JText::_('J2STORE_CONFIRMED');
+                break;
+            default:
+                $vars->message = JText::_('J2STORE_FAILED');
+        }
+        return $vars;
     }
 
     /**
@@ -215,14 +321,11 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
      * @return int
      */
     private function getPrice($order_id) {
-        F0FTable::addIncludePath( JPATH_ADMINISTRATOR.'/components/com_j2store/tables' );
-        $order = F0FTable::getInstance('Order', 'J2StoreTable');
-
-        if($order->load( array('order_id'=>$order_id))) {
+        $order = $this->getOrder($order_id);
+        if($order){
             return $order->order_total;
-        } else {
-            return 0;
         }
+        return 0;
     }
 
     /**
@@ -232,14 +335,11 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
      * @return string
      */
     private function getCurrencyFromOrder($order_id) {
-        F0FTable::addIncludePath( JPATH_ADMINISTRATOR.'/components/com_j2store/tables' );
-        $order = F0FTable::getInstance('Order', 'J2StoreTable');
-
-        if($order->load( array('order_id'=>$order_id))) {
+        $order = $this->getOrder($order_id);
+        if($order){
             return $order->currency_code;
-        } else {
-            return '';
         }
+        return '';
     }
 
     /**
@@ -275,39 +375,17 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
 
         if($_SERVER['REMOTE_ADDR'] <> '195.150.9.37'
             && !(bool) $this->params->get('sandbox', 0)) {
-            return self::STATUS_FAIL;
+                return self::VALIDATION_IP;
         }
-
-        if (hash('sha256', $string) === $data->getString('signature')
-            && (float) $data->getString('operation_amount') === (float) $total_price
-            && ( $data->getString('operation_status') === self::OPERATION_STATUS_COMPLETED
-                || $data->getString('operation_status') === self::OPERATION_STATUS_REJECTED )
-            && $data->getString('operation_currency') === $this->getCurrencyFromOrder($data->getString('control'))) {
-            return self::STATUS_OK;
-        } else {
-            return self::STATUS_FAIL;
+        if (hash('sha256', $string) != $data->getString('signature')){
+                return self::VALIDATION_TOKEN;
         }
-    }
-
-    /**
-     * Set status order for response
-     * @param $order_id
-     * @return bool
-     */
-    private function setOrderStatus($order_id) {
-
-        F0FTable::addIncludePath ( JPATH_ADMINISTRATOR . '/components/com_j2store/tables' );
-        $order = F0FTable::getInstance ( 'Order', 'J2StoreTable' )->getClone();
-
-        $order->load(array('order_id' => $order_id));
-
-        $order->payment_complete();
-
-        if ($order->store()) {
-            $order->empty_cart();
-            return true;
-        } else {
-            return false;
+        if ((float) $data->getString('operation_amount') != (float) $total_price){
+                return self::VALIDATION_PRICE;
         }
+        if ($data->getString('operation_currency') != $this->getCurrencyFromOrder($data->getString('control'))){
+                return self::VALIDATION_CURRENCY;
+        }
+        return $data->getString('operation_status');
     }
 }
