@@ -380,10 +380,10 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         if (hash('sha256', $string) != $data->getString('signature')){
                 return self::VALIDATION_TOKEN;
         }
-        if ((float) $data->getString('operation_amount') != (float) $total_price){
+        if ((float) $data->getString('operation_original_amount') != (float) $total_price){
                 return self::VALIDATION_PRICE;
         }
-        if ($data->getString('operation_currency') != $this->getCurrencyFromOrder($data->getString('control'))){
+        if ($data->getString('operation_original_currency') != $this->getCurrencyFromOrder($data->getString('control'))){
                 return self::VALIDATION_CURRENCY;
         }
         return $data->getString('operation_status');
