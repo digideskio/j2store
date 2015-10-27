@@ -113,10 +113,14 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         $vars   = new JObject();
         $info   = $this->getOrderInformation($data);
 
+        $order = $this->getOrderByPayment($data['orderpayment_id']);
+        $currency_values= $this->getCurrency($order);
+
+
         //Needed for Dotpay
         $vars->id           = $this->params->get('accountId');
-        $vars->amount       = $data['orderpayment_amount'];
-        $vars->currency     = $data['order']->currency_code;
+        $vars->amount       = $this->getAmount($order);
+        $vars->currency     = $currency_values['currency_code'];
         $vars->description  = JText::_('J2STORE_PLUGIN_DOTPAY_ORDER') . $data['order_id'];
         $vars->lang         = $this->getLanguage();
         $vars->api_version  = $this->_default['api_version'];
@@ -227,6 +231,11 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         $this->save($order);
     }
 
+    private function getAmount($order)
+    {
+        $currency_values= $this->getCurrency($order);
+        return J2Store::currency()->format($order->order_total, $currency_values['currency_code'], $currency_values['currency_value'], false);
+    }
 
     /**
      * This method change order status. Status is defined as $order_state_id
@@ -272,6 +281,14 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
         F0FTable::addIncludePath ( JPATH_ADMINISTRATOR . '/components/com_j2store/tables' );
         $order = F0FTable::getInstance ( 'Order', 'J2StoreTable' )->getClone();
         $order->load(array('order_id' => $orderId));
+        return $order;
+    }
+
+    private function getOrderByPayment($paymentId)
+    {
+        F0FTable::addIncludePath ( JPATH_ADMINISTRATOR . '/components/com_j2store/tables' );
+        $order = F0FTable::getInstance ( 'Order', 'J2StoreTable' );
+        $order->load($paymentId);
         return $order;
     }
 
@@ -323,7 +340,7 @@ class plgJ2StorePayment_dotpay extends J2StorePaymentPlugin {
     private function getPrice($order_id) {
         $order = $this->getOrder($order_id);
         if($order){
-            return $order->order_total;
+            return $this->getAmount($order);
         }
         return 0;
     }
