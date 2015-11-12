@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <extension version="2.5" type="plugin" group="j2store" method="upgrade">
-    <name>Dotpay</name>
-    <version>1.0</version>
-    <creationDate>August 2015</creationDate>
+    <name>Dotpay Payment for j2store</name>
+    <version>1.1</version>
+    <creationDate>12.10.2015</creationDate>
     <author>Dotpay</author>
     <authorEmail>galaspiotrek@gmail.com</authorEmail>
-    <authorUrl>dotpay</authorUrl>
+    <authorUrl>http://www.dotpay.pl/</authorUrl>
     <copyright>Dotpay</copyright>
     <license>GNU General Public License v2 or later</license>
     <description>J2STORE_DOTPAY_PAYMENT_DESC</description>
@@ -23,6 +23,9 @@
         <language tag="en-GB">languages/en-GB.plg_j2store_payment_dotpay.sys.ini</language>
         <language tag="pl-PL">languages/pl-PL.plg_j2store_payment_dotpay.sys.ini</language>
     </languages>
+	<media folder="/" destination="j2store/images/payment/dotpay">
+        <filename>dp_logo_alpha_175_50.png</filename>
+	</media>
     <config>
         <fields name="params">
             <fieldset name="basic" addrulepath="plugins/j2store/payment_dotpay/validation">

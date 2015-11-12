@@ -1,15 +1,21 @@
-PLUGIN Dotpay dla sklepu J2Store
-===============================
+J2Store Dotpay payment module
+=====================
 
-Testowane na:
- - Joomla 3.4.3
- - J2Store 3.1.10
+*English version below*
 
-UWAGI!!
-======
+####Wtyczka dla Joomla dodająca bramkę płatności Dotpay####
 
-Jeśli transakcja przebiegnie poprawnie użytkownik zostanie przekierowany na pusty koszyk.
+### Instrukcja: ###
+1. Pobierz wtyczkę dotpay.zip (https://github.com/dotpay/j2store/releases/latest)
+2. Zainstaluj wtyczkę poprzez instalator dodatków Joomla.
+3. Aktywuj wtyczkę w zakładce dodatki i ją skonfiguruj.
 
-Jeśli tranzakcja nie zostanie poprawnie zakończona użytkownik zostanie przekierowany na koszyk w celu ponownego dokończenia tranzakcji.
 
-Działanie przekierowań jest wymuszone przez sklep J2Store.
+---------------------------------------
+
+####Joomla plugin adding Dotpay payment gateway####
+
+### Instructions: ###
+1. Download the plugin dotpay.zip (https://github.com/dotpay/j2store/releases/latest)
+2. Install plugin via Joomla extension installer
+3. Activate the plugin in extensions tab and configure it.
